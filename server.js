@@ -110,9 +110,25 @@ httpsApp.use('/auth', choreoProxy)
 httpsApp.use('/choreo-apis', choreoProxy)
 httpsApp.use('/', localProxy)
 
-var { private: key, cert } = selfsigned.generate([{ name: 'commonName', value: 'localhost' }], { days: 365 })
-var credentials = { key, cert }
-logger.info('Generated self-signed certificate for localhost')
+async function startHttpsServer() {
+    try {
+        const { private: key, cert } = await selfsigned.generate(
+            [{ name: 'commonName', value: 'localhost' }],
+            { days: 365 }
+        )
 
-var httpsServer = https.createServer(credentials, httpsApp)
-httpsServer.listen(configs.proxyPort, () => logger.info(`Access your web application on ${configs.getProxyUrl()}`))
+        logger.info('Generated self-signed certificate for localhost')
+
+        const httpsServer = https.createServer({ key, cert }, httpsApp)
+
+        httpsServer.listen(configs.proxyPort, () =>
+            logger.info(`Access your web application on ${configs.getProxyUrl()}`)
+        )
+    } catch (error) {
+        logger.error(`Failed to initialize HTTPS server: ${error.message}`)
+        process.exit(1)
+    }
+}
+
+startHttpsServer()
+
