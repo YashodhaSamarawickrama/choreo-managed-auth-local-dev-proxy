@@ -23,7 +23,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware')
 const https = require('https')
 const commandLineArgs = require('command-line-args')
 const winston = require('winston')
-const { execSync } = require('child_process')
+const selfsigned = require('selfsigned')
 
 
 const cliArgDefinitions = [
@@ -110,19 +110,8 @@ httpsApp.use('/auth', choreoProxy)
 httpsApp.use('/choreo-apis', choreoProxy)
 httpsApp.use('/', localProxy)
 
-function generateSelfSignedCert() {
-    const key = execSync(
-        'openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null',
-        { encoding: 'utf8' }
-    )
-    const cert = execSync(
-        'openssl req -new -x509 -key /dev/stdin -days 365 -subj "/CN=localhost" 2>/dev/null',
-        { input: key, encoding: 'utf8' }
-    )
-    return { key, cert }
-}
-
-var credentials = generateSelfSignedCert()
+var { private: key, cert } = selfsigned.generate([{ name: 'commonName', value: 'localhost' }], { days: 365 })
+var credentials = { key, cert }
 logger.info('Generated self-signed certificate for localhost')
 
 var httpsServer = https.createServer(credentials, httpsApp)
