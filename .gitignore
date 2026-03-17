@@ -25,3 +25,6 @@ replay_pid*
 
 # node modules
 node_modules
+
+# SSL certificates (generated at runtime)
+sslcert/

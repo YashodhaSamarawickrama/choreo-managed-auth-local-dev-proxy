@@ -20,11 +20,10 @@
 
 const express = require('express')
 const { createProxyMiddleware } = require('http-proxy-middleware')
-const fs = require('fs')
 const https = require('https')
 const commandLineArgs = require('command-line-args')
-const path = require('path')
 const winston = require('winston')
+const { execSync } = require('child_process')
 
 
 const cliArgDefinitions = [
@@ -111,12 +110,20 @@ httpsApp.use('/auth', choreoProxy)
 httpsApp.use('/choreo-apis', choreoProxy)
 httpsApp.use('/', localProxy)
 
-const keyFilePath = path.join(__dirname, 'sslcert', 'localhost.key')
-const certFilePath = path.join(__dirname, 'sslcert', 'localhost.crt')
+function generateSelfSignedCert() {
+    const key = execSync(
+        'openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null',
+        { encoding: 'utf8' }
+    )
+    const cert = execSync(
+        'openssl req -new -x509 -key /dev/stdin -days 365 -subj "/CN=localhost" 2>/dev/null',
+        { input: key, encoding: 'utf8' }
+    )
+    return { key, cert }
+}
 
-var privateKey = fs.readFileSync(keyFilePath, 'utf8')
-var certificate = fs.readFileSync(certFilePath, 'utf8')
-var credentials = { key: privateKey, cert: certificate }
+var credentials = generateSelfSignedCert()
+logger.info('Generated self-signed certificate for localhost')
 
 var httpsServer = https.createServer(credentials, httpsApp)
 httpsServer.listen(configs.proxyPort, () => logger.info(`Access your web application on ${configs.getProxyUrl()}`))
